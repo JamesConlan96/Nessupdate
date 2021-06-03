@@ -40,13 +40,24 @@ def windows(args):
                  "administrator command prompt)")
     try:
         os.chdir('c:\\Program Files\\Tenable\\Nessus')
+    except KeyboardInterrupt:
+        sys.exit("Killed by user")
     except:
         sys.exit("Nessus does not appear to be installed")
+    p = subprocess.Popen(shlex.split('net stop "Tenable Nessus"'),
+                                     stderr=subprocess.PIPE)
+    rCode = None
+    while rCode == None:
+        rCode = p.poll()
+    err = p.stderr.readline().rstrip()
+    if err != b'The Tenable Nessus service is not started.':
+        sys.exit("Could not stop the Tenable Nessus service")
     try:
-        subprocess.check_call(shlex.split('net stop "Tenable Nessus"'))
         p = subprocess.Popen(shlex.split('nessuscli.exe fix --reset'),
-                             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
-        p.communicate(input=b'y\n')
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        p.stdout.readline()
+        p.stdout.readline()
+        p.communicate(input=b'y\r\n') #This is broken
         rCode = None
         while rCode == None:
             rCode = p.poll()
@@ -58,6 +69,8 @@ def windows(args):
             try:
                 subprocess.check_call(shlex.split('nessuscli.exe fetch ' + 
                                                   '--register ' + args.license))
+            except KeyboardInterrupt:
+                sys.exit("Killed by user")
             except:
                 pass
             subprocess.check_call(shlex.split('nessuscli.exe fix --secure ' +
@@ -87,6 +100,8 @@ def windows(args):
             subprocess.check_call(shlex.split('nessusd -R'))
         subprocess.check_call(shlex.split('net start "Tenable Nessus"'))
         print("Nessus updated successfully")
+    except KeyboardInterrupt:
+        sys.exit("Killed by user")
     except:
         sys.exit("Failed to update Nessus")
 
@@ -97,6 +112,8 @@ def nix(args):
     svcRstCmd = ""
     try:
         os.chdir('/opt/nessus/sbin')
+    except KeyboardInterrupt:
+        sys.exit("Killed by user")
     except:
         sys.exit("Nessus does not appear to be installed")
     try:
@@ -106,6 +123,8 @@ def nix(args):
         try:
             subprocess.check_call(shlex.split('service nessusd stop'))
             svcRstCmd = "service nessusd start"
+        except KeyboardInterrupt:
+            sys.exit("Killed by user")
         except:
             sys.exit("Could not stop nessusd service")
     try:
@@ -123,6 +142,8 @@ def nix(args):
             try:
                 subprocess.check_call(shlex.split('./nessuscli fetch ' + 
                                                   '--register ' + args.license))
+            except KeyboardInterrupt:
+                sys.exit("Killed by user")
             except:
                 pass
             subprocess.check_call(shlex.split('./nessuscli fix --secure ' +
@@ -152,6 +173,8 @@ def nix(args):
             subprocess.check_call(shlex.split('./nessusd -R'))
         subprocess.check_call(shlex.split(svcRstCmd))
         print("Nessus updated successfully")
+    except KeyboardInterrupt:
+        sys.exit("Killed by user")
     except:
         sys.exit("Failed to update Nessus")
 
