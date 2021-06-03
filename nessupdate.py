@@ -40,6 +40,9 @@ def windows(args):
                  "administrator command prompt)")
     try:
         os.chdir('c:\\Program Files\\Tenable\\Nessus')
+    except:
+        sys.exit("Nessus does not appear to be installed")
+    try:
         subprocess.check_call(shlex.split('net stop "Tenable Nessus"'))
         p = subprocess.Popen(shlex.split('nessuscli.exe fix --reset'),
                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
@@ -94,15 +97,18 @@ def nix(args):
     svcRstCmd = ""
     try:
         os.chdir('/opt/nessus/sbin')
+    except:
+        sys.exit("Nessus does not appear to be installed")
+    try:
+        subprocess.check_call(shlex.split('systemctl stop nessusd'))
+        svcRstCmd = "systemctl start nessusd"
+    except:
         try:
-            subprocess.check_call(shlex.split('systemctl stop nessusd'))
-            svcRstCmd = "systemctl start nessusd"
+            subprocess.check_call(shlex.split('service nessusd stop'))
+            svcRstCmd = "service nessusd start"
         except:
-            try:
-                subprocess.check_call(shlex.split('service nessusd stop'))
-                svcRstCmd = "service nessusd start"
-            except:
-                sys.exit("Could not stop nessusd service")
+            sys.exit("Could not stop nessusd service")
+    try:
         p = subprocess.Popen(shlex.split('./nessuscli fix --reset'),
                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
         p.communicate(input=b'y\n')
