@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
 
+"""Script to update a nessus installation. Based on instructions found at
+https://community.tenable.com/s/article/Receiving-Installation-Expired-When-Attempting-to-Login-to-Nessus
+"""
+
+
 import argparse
 import os
+import ctypes
 import shlex
 import subprocess
 import sys
@@ -29,6 +35,9 @@ def genParser():
 
 def windows(args):
     """Updates a Nessus installation on a Windows operating system"""
+    if ctypes.windll.shell32.IsUserAnAdmin() == 0:
+        sys.exit("Administrator privileges required (try rerunning in an " +
+                 "administrator command prompt)")
     try:
         subprocess.check_call(shlex.split('cd c:\Program Files\Tenable\Nessus'))
         subprocess.check_call(shlex.split('net stop "Tenable Nessus"'))
