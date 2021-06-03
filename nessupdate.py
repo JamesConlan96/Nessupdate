@@ -77,25 +77,62 @@ def windows(args):
 
 def nix(args):
     """Updates a Nessus installation on a *nix operating system"""
-    svcCmd = ""
-    if 
-    #TODO
-    # Linux (Root permissions)
-    #     # cd /opt/nessus/sbin
-    #     # service nessusd stop
-    #     # ./nessuscli fix --reset (select "y" ; this command only clears the SMTP and proxy settings. It will not touch any scans or scan history.)
-    #     If you have a proxy follow the below steps
-    #     # ./nessuscli fetch --register <activationcode> (this will error out; continue with setting the proxy)
-    #     # ./nessuscli fix --secure --set proxy=<ip/hostname>
-    #     # ./nessuscli fix --secure --set proxy_port=<port>
-    #     # ./nessuscli fix --secure --set proxy_username=<user>
-    #     # ./nessuscli fix --secure --set proxy_password=<password>
-    #     Continue here
-    #     # ./nessuscli fetch --register <activationcode>
-    #     # ./nessuscli update --all
-    #     # ./nessusd -R (optional command to rebuild the plugin database)
-    #     # service nessusd start
-    pass 
+    if os.geteuid != 0:
+        sys.exit("Root privileges required (try rerunning using sudo)")
+    svcRstCmd = ""
+    try:
+        subprocess.check_call(shlex.split('cd /opt/nessus/sbin'))
+        try:
+            subprocess.check_call(shlex.split('systemctl stop nessusd'))
+            svcRstCmd = "systemctl start nessusd"
+        except:
+            try:
+                subprocess.check_call(shlex.split('service nessusd stop'))
+                svcRstCmd = "service nessusd start"
+            except:
+                sys.exit("Could not stop nessusd service")
+        p = subprocess.Popen(shlex.split('./nessuscli fix --reset'),
+                             stdin=subprocess.PIPE)
+        p.communicate(input=b'y\n')
+        rCode = None
+        while rCode == None:
+            rCode = p.poll()
+        if rCode != 0:
+            raise subprocess.CalledProcessError("Command './nessuscli fix " +
+                                                "--reset' returned non-zero " +
+                                                "exit status " + str(rCode))
+        if args.proxyAddr and args.proxyPort:
+            try:
+                subprocess.check_call(shlex.split('./nessuscli fetch ' + 
+                                                  '--register ' + args.license))
+            except:
+                pass
+            subprocess.check_call(shlex.split('./nessuscli fix --secure ' +
+                                            '--set proxy=' + args.proxyAddr))
+            subprocess.check_call(shlex.split('./nessuscli fix --secure ' +
+                                            '--set proxy_port=' + 
+                                            str(args.proxyPort)))
+            if args.proxyUser and args.proxyPass:
+                subprocess.check_call(shlex.split('./nessuscli fix --secure' +
+                                                  ' --set proxy_username=' +
+                                                  args.proxyUser))
+                subprocess.check_call(shlex.split('./nessuscli fix --secure' +
+                                                  ' --set proxy_password=' +
+                                                  args.proxyPass))
+            else:
+                sys.exit("Please provide both a username and password to use " +
+                        "an authenticated proxy")
+        else:
+            sys.exit("Please provide both an IP address/hostname and port " +
+                    "number to use a proxy")
+        subprocess.check_call(shlex.split('./nessuscli fetch --register ' + 
+                                          args.license))
+        subprocess.check_call(shlex.split('./nessuscli update --all'))
+        if args.rebuild:
+            subprocess.check_call(shlex.split('./nessusd -R'))
+        subprocess.check_call(shlex.split(svcRstCmd))
+    except Exception as e:
+        sys.exit("Failed to update Nessus:\n" + str(e))
 
 def getOsFunc():
     """Returns an appropriate function based on the operating system"""
