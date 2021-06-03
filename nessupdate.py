@@ -30,7 +30,7 @@ def genParser():
     parser.add_argument('-pC', '--proxy-pass', help="password for the proxy",
                         type=str, action='store', dest='proxyPass')
     parser.add_argument('license', help="Nessus license code", type=str,
-                        action='store', dest='license')
+                        action='store')
     return parser
 
 def windows(args):
@@ -39,10 +39,10 @@ def windows(args):
         sys.exit("Administrator privileges required (try rerunning in an " +
                  "administrator command prompt)")
     try:
-        subprocess.check_call(shlex.split('cd c:\Program Files\Tenable\Nessus'))
+        os.chdir('c:\\Program Files\\Tenable\\Nessus')
         subprocess.check_call(shlex.split('net stop "Tenable Nessus"'))
         p = subprocess.Popen(shlex.split('nessuscli.exe fix --reset'),
-                             stdin=subprocess.PIPE)
+                             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
         p.communicate(input=b'y\n')
         rCode = None
         while rCode == None:
@@ -70,27 +70,30 @@ def windows(args):
                                                   ' --set proxy_password=' +
                                                   args.proxyPass))
             else:
-                sys.exit("Please provide both a username and password to use " +
-                         "an authenticated proxy")
+                if args.proxyUser or args.proxyPass:
+                    sys.exit("Please provide both a username and password to " +
+                             "use an authenticated proxy")
         else:
-            sys.exit("Please provide both an IP address/hostname and port " +
-                     "number to use a proxy")
+            if args.proxyAddr or args.proxyPort:
+                sys.exit("Please provide both an IP address/hostname and port" +
+                         " number to use a proxy")
         subprocess.check_call(shlex.split('nessuscli.exe fetch --register ' + 
                                           args.license))
         subprocess.check_call(shlex.split('nessuscli.exe update --all'))
         if args.rebuild:
             subprocess.check_call(shlex.split('nessusd -R'))
         subprocess.check_call(shlex.split('net start "Tenable Nessus"'))
-    except Exception as e:
-        sys.exit("Failed to update Nessus:\n" + str(e))
+        print("Nessus updated successfully")
+    except:
+        sys.exit("Failed to update Nessus")
 
 def nix(args):
     """Updates a Nessus installation on a *nix operating system"""
-    if os.geteuid != 0:
+    if os.geteuid() != 0:
         sys.exit("Root privileges required (try rerunning using sudo)")
     svcRstCmd = ""
     try:
-        subprocess.check_call(shlex.split('cd /opt/nessus/sbin'))
+        os.chdir('/opt/nessus/sbin')
         try:
             subprocess.check_call(shlex.split('systemctl stop nessusd'))
             svcRstCmd = "systemctl start nessusd"
@@ -101,7 +104,7 @@ def nix(args):
             except:
                 sys.exit("Could not stop nessusd service")
         p = subprocess.Popen(shlex.split('./nessuscli fix --reset'),
-                             stdin=subprocess.PIPE)
+                             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
         p.communicate(input=b'y\n')
         rCode = None
         while rCode == None:
@@ -129,19 +132,22 @@ def nix(args):
                                                   ' --set proxy_password=' +
                                                   args.proxyPass))
             else:
-                sys.exit("Please provide both a username and password to use " +
-                        "an authenticated proxy")
+                if args.proxyUser or args.proxyPass:
+                    sys.exit("Please provide both a username and password to " +
+                             "use an authenticated proxy")
         else:
-            sys.exit("Please provide both an IP address/hostname and port " +
-                    "number to use a proxy")
+            if args.proxyAddr or args.proxyPort:
+                sys.exit("Please provide both an IP address/hostname and port" +
+                         " number to use a proxy")
         subprocess.check_call(shlex.split('./nessuscli fetch --register ' + 
                                           args.license))
         subprocess.check_call(shlex.split('./nessuscli update --all'))
         if args.rebuild:
             subprocess.check_call(shlex.split('./nessusd -R'))
         subprocess.check_call(shlex.split(svcRstCmd))
-    except Exception as e:
-        sys.exit("Failed to update Nessus:\n" + str(e))
+        print("Nessus updated successfully")
+    except:
+        sys.exit("Failed to update Nessus")
 
 def getOsFunc():
     """Returns an appropriate function based on the operating system"""
