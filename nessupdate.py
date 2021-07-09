@@ -35,11 +35,12 @@ def genParser():
 
 def windows(args):
     """Updates a Nessus installation on a Windows operating system"""
+    nDir = "C:\\Program Files\\Tenable\\Nessus"
     if ctypes.windll.shell32.IsUserAnAdmin() == 0:
         sys.exit("Administrator privileges required (try rerunning in an " +
                  "administrator command prompt)")
     try:
-        os.chdir('c:\\Program Files\\Tenable\\Nessus')
+        os.chdir(nDir)
     except KeyboardInterrupt:
         sys.exit("Killed by user")
     except:
@@ -50,10 +51,11 @@ def windows(args):
     while rCode == None:
         rCode = p.poll()
     err = p.stderr.readline().rstrip()
-    if err != b'The Tenable Nessus service is not started.':
+    if err not in [b'The Tenable Nessus service is not started.', 
+                   b'The Tenable Nessus service was stopped successfully.']:
         sys.exit("Could not stop the Tenable Nessus service")
     try:
-        p = subprocess.Popen(shlex.split('nessuscli.exe fix --reset'),
+        p = subprocess.Popen([nDir + '\\nessuscli.exe', 'fix', '--reset'],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         p.stdout.readline()
         p.stdout.readline()
@@ -62,28 +64,32 @@ def windows(args):
         while rCode == None:
             rCode = p.poll()
         if rCode != 0:
-            raise subprocess.CalledProcessError("Command 'nessuscli.exe fix " +
+            raise Exception("Command 'nessuscli.exe fix " +
                                                 "--reset' returned non-zero " +
                                                 "exit status " + str(rCode))
         if args.proxyAddr and args.proxyPort:
             try:
-                subprocess.check_call(shlex.split('nessuscli.exe fetch ' + 
-                                                  '--register ' + args.license))
+                subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe ' + 
+                                                  'fetch --register ' + 
+                                                  args.license))
             except KeyboardInterrupt:
                 sys.exit("Killed by user")
             except:
                 pass
-            subprocess.check_call(shlex.split('nessuscli.exe fix --secure ' +
-                                              '--set proxy=' + args.proxyAddr))
-            subprocess.check_call(shlex.split('nessuscli.exe fix --secure ' +
-                                              '--set proxy_port=' + 
+            subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe fix ' +
+                                              '--secure --set proxy=' + 
+                                              args.proxyAddr))
+            subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe fix' +
+                                              ' --secure --set proxy_port=' + 
                                               str(args.proxyPort)))
             if args.proxyUser and args.proxyPass:
-                subprocess.check_call(shlex.split('nessuscli.exe fix --secure' +
-                                                  ' --set proxy_username=' +
+                subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe fix' +
+                                                  ' --secure --set ' +
+                                                  'proxy_username=' +
                                                   args.proxyUser))
-                subprocess.check_call(shlex.split('nessuscli.exe fix --secure' +
-                                                  ' --set proxy_password=' +
+                subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe fix' +
+                                                  ' --secure --set ' +
+                                                  'proxy_password=' +
                                                   args.proxyPass))
             else:
                 if args.proxyUser or args.proxyPass:
@@ -93,17 +99,18 @@ def windows(args):
             if args.proxyAddr or args.proxyPort:
                 sys.exit("Please provide both an IP address/hostname and port" +
                          " number to use a proxy")
-        subprocess.check_call(shlex.split('nessuscli.exe fetch --register ' + 
-                                          args.license))
-        subprocess.check_call(shlex.split('nessuscli.exe update --all'))
+        subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe fetch ' + 
+                                          '--register ' + args.license))
+        subprocess.check_call(shlex.split(nDir + '\\nessuscli.exe update --all')
+                                         )
         if args.rebuild:
-            subprocess.check_call(shlex.split('nessusd -R'))
+            subprocess.check_call(shlex.split(nDir + '\\nessusd.exe -R'))
         subprocess.check_call(shlex.split('net start "Tenable Nessus"'))
         print("Nessus updated successfully")
     except KeyboardInterrupt:
         sys.exit("Killed by user")
-    except:
-        sys.exit("Failed to update Nessus")
+#    except:
+#        sys.exit("Failed to update Nessus")
 
 def nix(args):
     """Updates a Nessus installation on a *nix operating system"""
