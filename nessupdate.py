@@ -196,16 +196,16 @@ def getOsFunc():
 
 def main():
     """Main method"""
-    parser = genParser() 
-    if len(sys.argv) == 1:
-        parser.print_help()
-    else:
-        args = parser.parse_args()
-        getOsFunc()(args)
+    try:
+        parser = genParser() 
+        if len(sys.argv) == 1:
+            parser.print_help()
+        else:
+            args = parser.parse_args()
+            getOsFunc()(args)
+    except KeyboardInterrupt:
+        sys.exit("Killed by user")
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        sys.exit("Killed by user")
+    main()
